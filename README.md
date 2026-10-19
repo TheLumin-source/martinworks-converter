@@ -1,5 +1,7 @@
 # MartinWorks Converter
 
+[![CI](https://github.com/TheLumin-source/martinworks-converter/actions/workflows/ci.yml/badge.svg)](https://github.com/TheLumin-source/martinworks-converter/actions/workflows/ci.yml)
+
 A drag-and-drop desktop converter for images and documents. Everything runs on
 your own machine: nothing is uploaded anywhere.
 
@@ -96,12 +98,20 @@ paths are relative to the repo, and the version comes from the `VERSION` file.
 
 ## Status
 
-Tested on Linux, where the engine and both SVG backends pass the suite above.
+CI covers Linux, Windows and macOS on Python 3.10 and 3.12, running the test
+suite and the selftest on both SVG backends.
 
-The Windows build path is verified by unit test rather than by a build: the PE
-walker and the cairo discovery logic are both covered, but no Windows machine
-has produced an installer from this tree yet. Treat the first Windows build as
-unproven and check that `--selftest` line.
+The Windows job goes further and is the one worth knowing about. It installs
+cairo into MSYS2, collects the 19 DLL dependency closure with
+`tools/collect_cairo_dlls.py`, builds the frozen app with PyInstaller, and runs
+that app's own selftest. It asserts three things that used to be assumptions:
+the frozen app finds the bundled DLLs and really uses CairoSVG rather than
+quietly falling back, document conversion survives freezing, and every
+conversion in the selftest still passes.
+
+Not covered by CI: the Inno Setup installer, since the runners have no Inno,
+and the GUI itself, which no automated test draws. Both SVG renderers and every
+conversion path underneath the GUI are tested.
 
 ## Licence
 
