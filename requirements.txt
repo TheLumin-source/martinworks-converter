@@ -1,0 +1,29 @@
+# MartinWorks Converter dependencies.
+#
+# tkinter is NOT here: it is not on PyPI. It ships with the OS Python.
+#   Debian/Ubuntu:  sudo apt install python3-tk
+#   Arch:           sudo pacman -S tk
+#   Fedora:         sudo dnf install python3-tkinter
+#   Windows:        included with the python.org installer
+
+# Images
+Pillow
+
+# SVG input, preferred renderer. Needs a system cairo, which Linux normally
+# already has. On Windows the cairo DLLs must be bundled at build time, see
+# tools/collect_cairo_dlls.py and converter.spec.
+cairosvg
+
+# SVG fallback. One self-contained wheel with no system dependency, so SVG
+# keeps working in a Windows build even if the cairo DLLs are not bundled.
+resvg-py
+
+# Drag and drop. Optional: without it the app falls back to Browse.
+tkinterdnd2
+
+# Documents
+pypandoc_binary
+pymupdf
+xhtml2pdf
+pdf2docx
+striprtf

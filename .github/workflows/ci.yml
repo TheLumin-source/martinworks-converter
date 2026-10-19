@@ -1,0 +1,106 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / py${{ matrix.python }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python: ['3.10', '3.12']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+
+      # CairoSVG needs a real cairo. Linux runners get it from apt; on Windows
+      # and macOS there is none, so the engine falls back to resvg-py. That
+      # fallback is the whole point of testing those two here.
+      - name: Install cairo (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libcairo2
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt -r requirements-dev.txt
+
+      - name: Report which SVG backend was picked
+        run: python -c "import image_engine as e; print('backend:', e.SVG_BACKEND, '| error:', e.SVG_ERROR, '| cairo dir:', e.CAIRO_DLL_DIR)"
+
+      - name: Selftest, the shipped entry point
+        run: python image_converter.py --selftest
+
+      - name: Test suite
+        run: python -m pytest tests -q
+
+      # Both renderers must agree, so a fallback is never a silent downgrade.
+      - name: Selftest on resvg
+        env:
+          CONVERTER_SVG_BACKEND: resvg
+        run: python image_converter.py --selftest
+
+      - name: Selftest on cairosvg
+        if: runner.os == 'Linux'
+        env:
+          CONVERTER_SVG_BACKEND: cairosvg
+        run: python image_converter.py --selftest
+
+  build-windows:
+    name: Windows build
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      # Collects the cairo dependency closure by walking the PE import tables.
+      # MSYS2 is preinstalled on the Windows runners. If cairo is not there the
+      # build still has to succeed, because resvg-py covers SVG on its own.
+      - name: Collect cairo DLLs
+        continue-on-error: true
+        run: python tools/collect_cairo_dlls.py --source C:/msys64/mingw64/bin --out cairo
+
+      - name: Build
+        run: pyinstaller --noconfirm converter.spec
+
+      # The exe is built windowed (console=False), so PowerShell will not wait
+      # on it and never sets $LASTEXITCODE. Start-Process -Wait does both.
+      # The log it writes is the authoritative output, so print it either way.
+      - name: Run the frozen app's selftest
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "frozen-selftest.log"
+          $p = Start-Process -FilePath "dist/Image Converter/Image Converter.exe" `
+                             -ArgumentList "--selftest", $log `
+                             -Wait -PassThru -NoNewWindow
+          if (Test-Path $log) { Get-Content $log } else { Write-Host "no log written" }
+          if ($p.ExitCode -ne 0) { throw "frozen selftest failed, exit $($p.ExitCode)" }
+          if (-not (Select-String -Path $log -Pattern 'SELFTEST PASSED' -Quiet)) {
+            throw "frozen selftest did not report PASSED"
+          }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: image-converter-windows
+          path: dist/Image Converter/

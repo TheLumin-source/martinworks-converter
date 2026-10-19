@@ -1,0 +1,41 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+.venv/
+.venv-*/
+venv/
+env/
+
+# Build output
+build/
+dist/
+*.spec.bak
+converter-out/
+
+# Bundled cairo DLLs: fetched at build time by tools/collect_cairo_dlls.py,
+# never committed. They belong to the GTK / MSYS2 runtime they came from.
+cairo/
+
+# Editor and OS noise
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Local working files
+*.bak
+*.bak-*
+*.log
+selftest*.log
+
+# Agent and assistant config stays local
+CLAUDE.md
+.claude/
