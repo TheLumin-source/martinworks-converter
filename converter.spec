@@ -29,19 +29,19 @@ back to the resvg renderer for SVG.
 """
 
 import os
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_all, collect_submodules, collect_data_files
 
 APP_NAME = "Image Converter"
 HERE = os.path.abspath(os.getcwd())
 
 # The collector drops the whole closure here. Bundled under a "cairo" folder so
 # image_engine._prepare_windows_cairo knows where to look.
-cairo_binaries = []
+binaries = []
 cairo_dir = os.path.join(HERE, "cairo")
 if os.path.isdir(cairo_dir):
     for name in sorted(os.listdir(cairo_dir)):
         if name.lower().endswith(".dll"):
-            cairo_binaries.append((os.path.join(cairo_dir, name), "cairo"))
+            binaries.append((os.path.join(cairo_dir, name), "cairo"))
 
 datas = [("fonts", "fonts"), ("icon.ico", "."), ("icon.png", "."), ("VERSION", ".")]
 datas += collect_data_files("cairosvg", include_py_files=False)
@@ -55,10 +55,29 @@ hiddenimports = [
 ]
 hiddenimports += collect_submodules("cairosvg")
 
+# The document stack ships data files that the import analysis does not follow,
+# and a missing one takes out the whole Documents tab rather than failing
+# loudly: pymupdf 1.28 loads layout resources from disk, and pypandoc_binary
+# carries the pandoc executable itself. collect_all is deliberate overcollection
+# here, since guessing the exact resource list is what broke this before.
+#
+# Optional on purpose: a build without the document extras still gives a
+# working Images tab, so a missing package must not fail the build.
+for _pkg in ("pymupdf", "pymupdf_layout", "pymupdf4llm", "pypandoc",
+             "xhtml2pdf", "reportlab", "pdf2docx", "striprtf"):
+    try:
+        _d, _b, _h = collect_all(_pkg)
+    except Exception:
+        continue
+    datas += _d
+    binaries += _b
+    hiddenimports += _h
+
+
 a = Analysis(
     ["image_converter.py"],
     pathex=[HERE],
-    binaries=cairo_binaries,
+    binaries=binaries,
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],

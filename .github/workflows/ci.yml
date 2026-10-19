@@ -75,12 +75,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt pyinstaller
 
-      # Collects the cairo dependency closure by walking the PE import tables.
-      # MSYS2 is preinstalled on the Windows runners. If cairo is not there the
-      # build still has to succeed, because resvg-py covers SVG on its own.
-      - name: Collect cairo DLLs
+      # MSYS2 is preinstalled on the Windows runners but carries no cairo, so
+      # install it, then walk its PE import tables to collect the dependency
+      # closure. Both steps are allowed to fail: resvg-py covers SVG on its own,
+      # so a build without the cairo DLLs is degraded, not broken.
+      - name: Install cairo into MSYS2
+        id: cairo
         continue-on-error: true
-        run: python tools/collect_cairo_dlls.py --source C:/msys64/mingw64/bin --out cairo
+        run: |
+          C:\msys64\usr\bin\pacman -Sy --noconfirm --needed mingw-w64-x86_64-cairo
+          if ($LASTEXITCODE -ne 0) { throw "pacman failed" }
+          python tools/collect_cairo_dlls.py --source C:/msys64/mingw64/bin --out cairo
+          if ($LASTEXITCODE -ne 0) { throw "cairo collection failed" }
+          Get-ChildItem cairo
 
       - name: Build
         run: pyinstaller --noconfirm converter.spec
@@ -98,6 +105,20 @@ jobs:
           if ($p.ExitCode -ne 0) { throw "frozen selftest failed, exit $($p.ExitCode)" }
           if (-not (Select-String -Path $log -Pattern 'SELFTEST PASSED' -Quiet)) {
             throw "frozen selftest did not report PASSED"
+          }
+          # A frozen build that cannot load the document engine still "passes"
+          # the selftest, because the Images tab works on its own. For a release
+          # build that is a dead Documents tab, so fail the job on it here.
+          if (Select-String -Path $log -Pattern 'DOC NOT AVAILABLE' -Quiet) {
+            throw "frozen build lost document support, see the log above"
+          }
+          # If the cairo DLLs were collected, the frozen app has to actually
+          # find them. "NONE" here would mean the bundling or the runtime
+          # lookup is broken and the app silently fell back to resvg.
+          if ('${{ steps.cairo.outcome }}' -eq 'success') {
+            if (Select-String -Path $log -Pattern 'bundled cairo dir: NONE' -Quiet) {
+              throw "cairo DLLs were bundled but the frozen app did not find them"
+            }
           }
 
       - uses: actions/upload-artifact@v4
