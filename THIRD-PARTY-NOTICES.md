@@ -27,8 +27,7 @@ Tkinter is part of the Python standard library and is not installed from PyPI.
 
 The fonts in `fonts/` are the only third party files actually committed here.
 Cinzel and Crimson Pro are both under the SIL Open Font License 1.1, which
-allows bundling and redistribution with software. See `fonts/OFL.txt` and
-`fonts/README.md`.
+allows bundling and redistribution with software. See `fonts/OFL.txt`.
 
 `icon.ico` and `icon.png` are the MartinWorks mark. The code licence covers the
 code, not the brand: please do not ship the icons on something that looks like

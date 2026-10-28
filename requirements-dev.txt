@@ -1,2 +1,0 @@
-# Development extras, not needed to run the app.
-pytest

@@ -1,6 +1,15 @@
+These fonts are bundled with MartinWorks Converter and loaded privately at
+runtime: Cinzel for headings, Crimson Pro for body text. They are never
+installed system wide, and if loading fails the app falls back to Georgia or
+Constantia, so they are a nicety rather than a requirement.
+
 Copyright (c) Natanael Gama (Cinzel), Reserved Font Name "Cinzel".
 Copyright (c) Jacques Le Bailly and Sebastian Kosch (Crimson Pro),
 Reserved Font Name "Crimson".
+
+Both families are under the SIL Open Font License 1.1, reproduced below, which
+permits bundling and redistribution with software. Modified versions must not
+use the Reserved Font Names.
 
 SIL OPEN FONT LICENSE Version 1.1 - 26 February 2007
 -----------------------------------------------------------
